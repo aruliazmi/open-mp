@@ -26,7 +26,7 @@ cd /mnt/server || exit
 
 if [ ! -f config.json ]; then
   echo "Downloading default config.json"
-  curl -sSL https://raw.githubusercontent.com/parkervcp/eggs/master/game_eggs/gta/openmp/config.json -o config.json
+  curl -sSL https://raw.githubusercontent.com/aruliazmi/open-mp/refs/heads/master/config.json -o config.json
 else
   echo "Using existing config.json"
 fi
