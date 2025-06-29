@@ -31,7 +31,7 @@ else
   echo "Using existing config.json"
 fi
 
-chown -R root:root /mnt
+chown -R www-data:www-data /mnt
 export HOME=/mnt/server
 
 echo "-----------------------------------------"
