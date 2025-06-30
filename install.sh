@@ -1,30 +1,46 @@
 #!/bin/bash
+set -e
 
-# Update dan install dependensi dasar
-apt -y update
-apt -y --no-install-recommends install curl jq unzip ca-certificates \
-    lib32gcc-s1 lib32stdc++6 winbind xvfb xauth wine64 wine32 winetricks
+echo "==============================================="
+echo "[INSTALL] Mulai instalasi OpenMP di Wine (mono-ubuntu)"
+echo "==============================================="
 
-# Setup environment
+echo "[INSTALL] Update & install dependencies..."
+dpkg --add-architecture i386
+apt update
+apt install -y --no-install-recommends \
+  curl jq unzip ca-certificates cabextract \
+  lib32gcc-s1 lib32stdc++6 winbind gnupg \
+  wine wine32 winetricks xvfb
+
+export HOME=/mnt/server
 export WINEPREFIX=/mnt/server/.wine
-mkdir -p /mnt/server/temp
-cd /mnt/server/temp || exit
 
-# Ambil versi OpenMP
+echo "[INSTALL] Memberi akses ke user www-data..."
+chown -R www-data:www-data /mnt/server
+
+echo "[INSTALL] Inisialisasi Wine (www-data)..."
+su -s /bin/bash www-data -c "xvfb-run --auto-servernum --server-args='-screen 0 1024x768x16' wineboot"
+
+mkdir -p /mnt/server/temp
+cd /mnt/server/temp || exit 1
+
 VERSION="${VERSION:-latest}"
 MATCH="open.mp-win-x86"
 
-echo "[INSTALL] Mengambil informasi rilis OpenMP..."
+echo "[INSTALL] Mengambil data rilis OpenMP..."
 RELEASE_JSON=$(curl -s https://api.github.com/repos/openmultiplayer/open.mp/releases/latest)
 DOWNLOAD_URL=$(echo "$RELEASE_JSON" | jq -r '.assets[].browser_download_url' | grep -i "$MATCH")
 
-echo "[INSTALL] Mendownload OpenMP dari: $DOWNLOAD_URL"
-curl -sSL -o openmp.zip "$DOWNLOAD_URL"
+if [[ -z "$DOWNLOAD_URL" ]]; then
+  echo "[ERROR] Tidak dapat menemukan URL unduhan OpenMP."
+  exit 1
+fi
 
-echo "[INSTALL] Mengekstrak openmp.zip..."
+echo "[INSTALL] Mengunduh dari: $DOWNLOAD_URL"
+curl -sSL -o openmp.zip "$DOWNLOAD_URL"
 unzip -o openmp.zip -d /mnt/server/temp
 
-# Pindahkan ke direktori utama
 if [ -d /mnt/server/temp/Server ]; then
   mv /mnt/server/temp/Server/* /mnt/server/
 else
@@ -32,32 +48,23 @@ else
 fi
 rm -rf /mnt/server/temp
 
-# Pindah direktori kerja
-cd /mnt/server || exit
+cd /mnt/server || exit 1
 
-# Setup Wine environment
-echo "[INSTALL] Menyiapkan WINEPREFIX dan konfigurasi awal..."
-xvfb-run --auto-servernum wineboot
-
-# Optional: install komponen Windows Common Controls jika dibutuhkan
-# echo "[INSTALL] Menginstall winetricks comctl32..."
-# xvfb-run --auto-servernum winetricks -q comctl32
-
-# Download config default jika tidak ada
 if [ ! -f config.json ]; then
-  echo "[INSTALL] Mengunduh config.json default..."
+  echo "[INSTALL] Mengunduh default config.json..."
   curl -sSL https://raw.githubusercontent.com/aruliazmi/open-mp/master/config.json -o config.json
 else
-  echo "[INSTALL] Menggunakan config.json yang sudah ada."
+  echo "[INSTALL] config.json sudah ada, dilewati."
 fi
 
-# Ganti kepemilikan ke www-data
+if [ ! -f "./omp-server.exe" ]; then
+  echo "[ERROR] File omp-server.exe tidak ditemukan setelah instalasi."
+  exit 1
+fi
+
 chown -R www-data:www-data /mnt
 
-# Set environment HOME
-export HOME=/mnt/server
-
-echo "-----------------------------------------"
-echo "✅ OpenMP Installation Completed"
-echo "Eggs Created By Aruli Azmi"
-echo "-----------------------------------------"
+echo "==============================================="
+echo "✅ Instalasi OpenMP selesai (mono-ubuntu)"
+echo "Egg by Aruli Azmi"
+echo "==============================================="
