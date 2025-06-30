@@ -52,7 +52,7 @@ cd /mnt/server || exit 1
 
 if [ ! -f config.json ]; then
   echo "[INSTALL] Mengunduh default config.json..."
-  curl -sSL https://raw.githubusercontent.com/aruliazmi/open-mp/master/config.json -o config.json
+  curl -sSL https://raw.githubusercontent.com/aruliazmi/open-mp-eggs/master/config.json -o config.json
 else
   echo "[INSTALL] config.json sudah ada, dilewati."
 fi
