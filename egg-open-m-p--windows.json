@@ -4,18 +4,18 @@
         "version": "PLCN_v1",
         "update_url": null
     },
-    "exported_at": "2025-06-30T06:51:28+00:00",
+    "exported_at": "2025-06-30T14:44:33+00:00",
     "name": "OpenMP-Windows",
     "author": "aruliazmi8@gmail.com",
-    "uuid": "af657102-6ed8-445c-8d99-ad01901e5e69",
-    "description": "Run OpenMP server (Windows .exe) using Wine in a headless Linux environment. Optimized for Pterodactyl.",
+    "uuid": "c0651249-8d6e-4ea8-87c9-5ce9d72a92eb",
+    "description": "OpenMP is an open source multiplayer server for GTA:SA, compatible with SA-MP clients. Runs on Windows via Wine.",
     "tags": [],
     "features": [],
     "docker_images": {
-        "openmp-wine": "ghcr.io\/parkervcp\/yolks:wine_latest"
+        "hcgcloud\/pterodactyl-images:ubuntu-wine": "hcgcloud\/pterodactyl-images:ubuntu-wine"
     },
     "file_denylist": [],
-    "startup": "wine .\/omp-server.exe",
+    "startup": "wine64 .\/omp-server.exe",
     "config": {
         "files": "{\r\n    \"config.json\": {\r\n        \"parser\": \"json\",\r\n        \"find\": {\r\n            \"network.port\": \"{{server.allocations.default.port}}\",\r\n            \"rcon.password\": \"{{server.environment.RCON_PASSWORD}}\"\r\n        }\r\n    }\r\n}",
         "startup": "{\r\n    \"done\": \"started on port\"\r\n}",
@@ -24,16 +24,30 @@
     },
     "scripts": {
         "installation": {
-            "script": "#!\/bin\/bash\r\nset -e\r\n\r\necho \"===============================================\"\r\necho \"[INSTALL] Mulai instalasi OpenMP di Wine (mono-ubuntu)\"\r\necho \"===============================================\"\r\n\r\necho \"[INSTALL] Update & install dependencies...\"\r\ndpkg --add-architecture i386\r\napt update\r\napt install -y --no-install-recommends \\\r\n  curl jq unzip ca-certificates cabextract \\\r\n  lib32gcc-s1 lib32stdc++6 winbind gnupg \\\r\n  wine wine32 winetricks xvfb\r\n\r\nexport HOME=\/mnt\/server\r\nexport WINEPREFIX=\/mnt\/server\/.wine\r\n\r\necho \"[INSTALL] Memberi akses ke user www-data...\"\r\nchown -R www-data:www-data \/mnt\/server\r\n\r\necho \"[INSTALL] Inisialisasi Wine (www-data)...\"\r\nsu -s \/bin\/bash www-data -c \"xvfb-run --auto-servernum --server-args='-screen 0 1024x768x16' wineboot\"\r\n\r\nmkdir -p \/mnt\/server\/temp\r\ncd \/mnt\/server\/temp || exit 1\r\n\r\nVERSION=\"${VERSION:-latest}\"\r\nMATCH=\"open.mp-win-x86\"\r\n\r\necho \"[INSTALL] Mengambil data rilis OpenMP...\"\r\nRELEASE_JSON=$(curl -s https:\/\/api.github.com\/repos\/openmultiplayer\/open.mp\/releases\/latest)\r\nDOWNLOAD_URL=$(echo \"$RELEASE_JSON\" | jq -r '.assets[].browser_download_url' | grep -i \"$MATCH\")\r\n\r\nif [[ -z \"$DOWNLOAD_URL\" ]]; then\r\n  echo \"[ERROR] Tidak dapat menemukan URL unduhan OpenMP.\"\r\n  exit 1\r\nfi\r\n\r\necho \"[INSTALL] Mengunduh dari: $DOWNLOAD_URL\"\r\ncurl -sSL -o openmp.zip \"$DOWNLOAD_URL\"\r\nunzip -o openmp.zip -d \/mnt\/server\/temp\r\n\r\nif [ -d \/mnt\/server\/temp\/Server ]; then\r\n  mv \/mnt\/server\/temp\/Server\/* \/mnt\/server\/\r\nelse\r\n  mv \/mnt\/server\/temp\/* \/mnt\/server\/\r\nfi\r\nrm -rf \/mnt\/server\/temp\r\n\r\ncd \/mnt\/server || exit 1\r\n\r\nif [ ! -f config.json ]; then\r\n  echo \"[INSTALL] Mengunduh default config.json...\"\r\n  curl -sSL https:\/\/raw.githubusercontent.com\/aruliazmi\/open-mp-eggs\/master\/config.json -o config.json\r\nelse\r\n  echo \"[INSTALL] config.json sudah ada, dilewati.\"\r\nfi\r\n\r\nif [ ! -f \".\/omp-server.exe\" ]; then\r\n  echo \"[ERROR] File omp-server.exe tidak ditemukan setelah instalasi.\"\r\n  exit 1\r\nfi\r\n\r\nchown -R www-data:www-data \/mnt\r\n\r\necho \"===============================================\"\r\necho \"\u2705 Instalasi OpenMP selesai (mono-ubuntu)\"\r\necho \"Egg by Aruli Azmi\"\r\necho \"===============================================\"",
-            "container": "ubuntu:22.04",
+            "script": "#!\/bin\/bash\r\napt -y update\r\napt -y --no-install-recommends install curl unzip lib32gcc1 ca-certificates\r\n\r\ncd \/tmp\r\ncurl -sSL -o openmp.zip https:\/\/github.com\/openmultiplayer\/open.mp\/releases\/latest\/download\/open.mp-win-x86.zip\r\n\r\nmkdir -p \/mnt\/server\r\nunzip -o openmp.zip -d \/mnt\/server\/tmp\r\n\r\nmv \/mnt\/server\/tmp\/*\/* \/mnt\/server\/\r\n\r\nrm -rf \/mnt\/server\/tmp\r\n\r\ncd \/mnt\/server\r\nchown -R root:root \/mnt\r\nexport HOME=\/mnt\/server",
+            "container": "ubuntu:16.04",
             "entrypoint": "bash"
         }
     },
     "variables": [
         {
             "sort": 1,
+            "name": "Max Players",
+            "description": "Max players allowed to play in the server",
+            "env_variable": "MAX_PLAYERS",
+            "default_value": "50",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": [
+                "required",
+                "integer",
+                "between:1,1000"
+            ]
+        },
+        {
+            "sort": 2,
             "name": "RCON Password",
-            "description": "The password for RCON",
+            "description": "Password for remote control (RCON)",
             "env_variable": "RCON_PASSWORD",
             "default_value": "changeme123",
             "user_viewable": true,
@@ -42,20 +56,6 @@
                 "required",
                 "string",
                 "max:32"
-            ]
-        },
-        {
-            "sort": 2,
-            "name": "Version",
-            "description": "The version of OpenMP to install (e.g. v1.4.0.2779)",
-            "env_variable": "VERSION",
-            "default_value": "latest",
-            "user_viewable": true,
-            "user_editable": true,
-            "rules": [
-                "required",
-                "string",
-                "max:20"
             ]
         }
     ]
